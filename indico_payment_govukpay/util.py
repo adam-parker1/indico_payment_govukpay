@@ -12,10 +12,10 @@ from indico_payment_govukpay import _
 
 
 # GOVUK Pay API details
-# SIXPAY_JSON_API_SPEC = '1.12'
+from indico_payment_govukpay.constants import GOVUK_TOKEN
 GOVUKPAY_INIT_URL = 'v1/payments'
-import os
-GOVUKPAY_API_TOKEN = os.getenv('GOVUK_TOKEN')
+GOVUKPAY_API_TOKEN = GOVUK_TOKEN
+# SIXPAY_JSON_API_SPEC = '1.12'
 # SIXPAY_PP_ASSERT_URL = 'Payment/v1/PaymentPage/Assert'
 # SIXPAY_PP_CAPTURE_URL = 'Payment/v1/Transaction/Capture'
 # SIXPAY_PP_CANCEL_URL = 'Payment/v1/Transaction/Cancel'

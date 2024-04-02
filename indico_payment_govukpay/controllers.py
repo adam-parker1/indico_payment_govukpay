@@ -88,6 +88,7 @@ class RHInitGovukpayPayment(RHPaymentBase):
         transaction_parameters = {
             'amount': to_small_currency(self.registration.price, self.registration.currency),
             'reference': '1231231',
+            'description': 'this is a required field for the API',
             'language': 'en',
             'delayed_capture': False,
             'return_url': url_for_plugin('payment_govukpay.success', self.registration.locator.uuid, _external=True),
@@ -126,7 +127,7 @@ class RHInitGovukpayPayment(RHPaymentBase):
         """Initialize payment page."""
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
         # credentials = (GovukpayPaymentPlugin.settings.get('username'), SixpayPaymentPlugin.settings.get('password'))
-        headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}'}
+        headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
         resp = requests.post(endpoint, json=transaction_data, headers=headers)
         try:
             resp.raise_for_status()
