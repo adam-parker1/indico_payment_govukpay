@@ -5,23 +5,23 @@
 # them and/or modify them under the terms of the MIT License;
 # see the LICENSE file for more details.
 
-import uuid
-
 import iso4217
 from werkzeug.exceptions import NotImplemented as HTTPNotImplemented
 
-from indico_payment_sixpay import _
+from indico_payment_govukpay import _
 
 
-# Saferpay API details
-SIXPAY_JSON_API_SPEC = '1.12'
-SIXPAY_PP_INIT_URL = 'Payment/v1/PaymentPage/Initialize'
-SIXPAY_PP_ASSERT_URL = 'Payment/v1/PaymentPage/Assert'
-SIXPAY_PP_CAPTURE_URL = 'Payment/v1/Transaction/Capture'
-SIXPAY_PP_CANCEL_URL = 'Payment/v1/Transaction/Cancel'
+# GOVUK Pay API details
+# SIXPAY_JSON_API_SPEC = '1.12'
+GOVUKPAY_INIT_URL = 'v1/payments'
+import os
+GOVUKPAY_API_TOKEN = os.getenv('GOVUK_TOKEN')
+# SIXPAY_PP_ASSERT_URL = 'Payment/v1/PaymentPage/Assert'
+# SIXPAY_PP_CAPTURE_URL = 'Payment/v1/Transaction/Capture'
+# SIXPAY_PP_CANCEL_URL = 'Payment/v1/Transaction/Cancel'
 
 # payment provider identifier
-PROVIDER_SIXPAY = 'sixpay'
+PROVIDER_GOVUKPAY = 'govukpay'
 
 # currencies for which the major to minor currency ratio
 # is not a multiple of 10
@@ -69,27 +69,27 @@ def to_large_currency(small_currency_amount, iso_code):
     return small_currency_amount / (10 ** exponent)
 
 
-def get_request_header(api_spec, account_id):
-    return {
-        'SpecVersion': api_spec,
-        'CustomerId': get_customer_id(account_id),
-        'RequestId': str(uuid.uuid4()),
-        'RetryIndicator': 0,
-    }
-
-
-def get_customer_id(account_id):
-    """Extract customer ID from account ID.
-
-    Customer ID is the first part (befor the hyphen) of the account ID.
-    """
-    return account_id.split('-')[0]
-
-
-def get_terminal_id(account_id):
-    """Extract the teminal ID from account ID.
-
-    The Terminal ID is the second part (after the hyphen) of the
-    account ID.
-    """
-    return account_id.split('-')[1]
+# def get_request_header(api_spec, account_id):
+#     return {
+#         'SpecVersion': api_spec,
+#         'CustomerId': get_customer_id(account_id),
+#         'RequestId': str(uuid.uuid4()),
+#         'RetryIndicator': 0,
+#     }
+#
+#
+# def get_customer_id(account_id):
+#     """Extract customer ID from account ID.
+#
+#     Customer ID is the first part (befor the hyphen) of the account ID.
+#     """
+#     return account_id.split('-')[0]
+#
+#
+# def get_terminal_id(account_id):
+#     """Extract the teminal ID from account ID.
+#
+#     The Terminal ID is the second part (after the hyphen) of the
+#     account ID.
+#     """
+#     return account_id.split('-')[1]

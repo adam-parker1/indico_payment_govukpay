@@ -25,7 +25,7 @@ from indico.web.rh import RH
 
 from indico_payment_govukpay import _
 from indico_payment_govukpay.plugin import GovukpayPaymentPlugin
-from indico_payment_govukpay.util import to_small_currency
+from indico_payment_govukpay.util import to_small_currency, PROVIDER_GOVUKPAY, GOVUKPAY_INIT_URL, GOVUKPAY_API_TOKEN
 # from indico_payment_sixpay.util import (PROVIDER_SIXPAY, SIXPAY_JSON_API_SPEC, SIXPAY_PP_ASSERT_URL,
                                         # SIXPAY_PP_CANCEL_URL, SIXPAY_PP_CAPTURE_URL, SIXPAY_PP_INIT_URL,
                                         # get_request_header, get_terminal_id, to_large_currency, to_small_currency)
@@ -122,17 +122,18 @@ class RHInitGovukpayPayment(RHPaymentBase):
     #         transaction_parameters['Notification']['MerchantEmails'] = [settings['notification_mail']]
     #     return transaction_parameters
     #
-    # def _init_payment_page(self, transaction_data):
-    #     """Initialize payment page."""
-    #     endpoint = urljoin(SixpayPaymentPlugin.settings.get('url'), SIXPAY_PP_INIT_URL)
-    #     credentials = (SixpayPaymentPlugin.settings.get('username'), SixpayPaymentPlugin.settings.get('password'))
-    #     resp = requests.post(endpoint, json=transaction_data, auth=credentials)
-    #     try:
-    #         resp.raise_for_status()
-    #     except RequestException as exc:
-    #         SixpayPaymentPlugin.logger.error('Could not initialize payment: %s', exc.response.text)
-    #         raise Exception('Could not initialize payment')
-    #     return resp.json()
+    def _init_payment_page(self, transaction_data):
+        """Initialize payment page."""
+        endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
+        # credentials = (GovukpayPaymentPlugin.settings.get('username'), SixpayPaymentPlugin.settings.get('password'))
+        headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}'}
+        resp = requests.post(endpoint, json=transaction_data, headers=headers)
+        try:
+            resp.raise_for_status()
+        except RequestException as exc:
+            GovukpayPaymentPlugin.logger.error('Could not initialize payment: %s', exc.response.text)
+            raise Exception('Could not initialize payment')
+        return resp.json()
     #
     # def _process_args(self):
     #     RHPaymentBase._process_args(self)
@@ -141,13 +142,15 @@ class RHInitGovukpayPayment(RHPaymentBase):
     #     if not SixpayPaymentPlugin.instance.supports_currency(self.registration.currency):
     #         raise BadRequest
     #
+
     def _process(self):
         transaction_params = self._get_transaction_parameters()
+        init_response = self._init_payment_page(transaction_params)
         with open('/opt/indico/adam.log', 'w') as my_file:
             my_file.write(str(transaction_params))
-        return redirect(transaction_params['return_url'])
+            my_file.write(str(init_response))
 
-    #     init_response = self._init_payment_page(transaction_params)
+        return redirect(transaction_params['return_url'])
     #     payment_url = init_response['RedirectUrl']
     #
     #     # create pending transaction and store Saferpay transaction token
