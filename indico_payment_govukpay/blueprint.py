@@ -7,7 +7,7 @@
 
 from indico.core.plugins import IndicoPluginBlueprint
 
-from indico_payment_govukpay.controllers import RHInitGovukpayPayment
+from indico_payment_govukpay.controllers import RHInitGovukpayPayment, UserSuccessHandler
 
 blueprint = IndicoPluginBlueprint(
     'payment_govukpay', __name__,
@@ -15,7 +15,8 @@ blueprint = IndicoPluginBlueprint(
 )
 
 blueprint.add_url_rule('/init', 'init', RHInitGovukpayPayment, methods=('GET', 'POST'))
+blueprint.add_url_rule('/success', 'success', UserSuccessHandler, methods=('GET', 'POST'))
+
 # blueprint.add_url_rule('/failure', 'failure', UserCancelHandler, methods=('GET', 'POST'))
 # blueprint.add_url_rule('/cancel', 'cancel', UserFailureHandler, methods=('GET', 'POST'))
-# blueprint.add_url_rule('/success', 'success', UserSuccessHandler, methods=('GET', 'POST'))
 # blueprint.add_url_rule('/notify', 'notify', SixpayNotificationHandler, methods=('Get', 'POST'))

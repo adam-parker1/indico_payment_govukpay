@@ -92,6 +92,7 @@ class RHInitGovukpayPayment(RHPaymentBase):
             'delayed_capture': False,
             'return_url': url_for_plugin('payment_govukpay.success', self.registration.locator.uuid, _external=True),
         }
+        return transaction_parameters
 
     #         'RequestHeader': get_request_header(SIXPAY_JSON_API_SPEC, settings['account_id']),
     #         'TerminalId': get_terminal_id(settings['account_id']),
@@ -142,7 +143,10 @@ class RHInitGovukpayPayment(RHPaymentBase):
     #
     def _process(self):
         transaction_params = self._get_transaction_parameters()
-        print(transaction_params)
+        with open('/opt/indico/adam.log', 'w') as my_file:
+            my_file.write(str(transaction_params))
+        return redirect(transaction_params['return_url'])
+
     #     init_response = self._init_payment_page(transaction_params)
     #     payment_url = init_response['RedirectUrl']
     #
@@ -378,3 +382,9 @@ class RHInitGovukpayPayment(RHPaymentBase):
 #             if self.registration.transaction.status == TransactionStatus.successful:
 #                 flash(_('Your payment has been confirmed.'), 'success')
 #         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
+
+
+class UserSuccessHandler(RHPaymentBase):
+    def _process(self):
+        flash(_('Your payment has been confirmed.'), 'success')
+        return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))

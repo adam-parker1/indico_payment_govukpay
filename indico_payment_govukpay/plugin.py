@@ -31,6 +31,7 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
     #: per event default settings - use the global settings
     default_event_settings = {
         'enabled': False,
+        'method_name': 'GovUK Pay',
     }
 
     def get_blueprints(self):
