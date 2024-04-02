@@ -11,7 +11,7 @@ from indico.core.plugins import IndicoPlugin
 from indico.modules.events.payment import PaymentPluginMixin
 from indico.util.date_time import now_utc
 
-from indico_payment_govukpay.forms import EventSettingsForm, PluginSettingsForm
+from indico_payment_govukpay.forms import PluginSettingsForm
 
 
 class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
@@ -23,27 +23,19 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
     configurable = True
     #: form for default configuration across events
     settings_form = PluginSettingsForm
-    #: form for configuration for specific events
-    event_settings_form = EventSettingsForm
     #: global default settings - should be a reasonable default
     default_settings = {
         'method_name': 'GovUK Pay',
-        # 'url': 'https://www.saferpay.com/api/',
-        'order_description': '{event_title}, {regform_title}, {user_name}',
-        'order_identifier': 'e{event_id}r{registration_id}',
-        'notification_mail': None
+        'url': 'https://publicapi.payments.service.gov.uk/'
     }
     #: per event default settings - use the global settings
     default_event_settings = {
         'enabled': False,
-        'order_description': None,
-        'order_identifier': None,
-        'notification_mail': None,
     }
 
     def get_blueprints(self):
         """Blueprint for URL endpoints with callbacks."""
-        from indico_payment_sixpay.blueprint import blueprint
+        from indico_payment_govukpay.blueprint import blueprint
         return blueprint
 
     def is_pending_transaction_expired(self, transaction):

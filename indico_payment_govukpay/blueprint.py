@@ -7,8 +7,6 @@
 
 from indico.core.plugins import IndicoPluginBlueprint
 
-# from indico_payment_sixpay.controllers import (RHInitSixpayPayment, SixpayNotificationHandler, UserCancelHandler,
-                                               # UserFailureHandler, UserSuccessHandler)
 from indico_payment_govukpay.controllers import RHInitGovukpayPayment
 
 blueprint = IndicoPluginBlueprint(

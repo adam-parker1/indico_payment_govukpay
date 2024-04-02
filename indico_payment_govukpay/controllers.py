@@ -25,6 +25,7 @@ from indico.web.rh import RH
 
 from indico_payment_govukpay import _
 from indico_payment_govukpay.plugin import GovukpayPaymentPlugin
+from indico_payment_govukpay.util import to_small_currency
 # from indico_payment_sixpay.util import (PROVIDER_SIXPAY, SIXPAY_JSON_API_SPEC, SIXPAY_PP_ASSERT_URL,
                                         # SIXPAY_PP_CANCEL_URL, SIXPAY_PP_CAPTURE_URL, SIXPAY_PP_INIT_URL,
                                         # get_request_header, get_terminal_id, to_large_currency, to_small_currency)
@@ -69,24 +70,29 @@ class RHInitGovukpayPayment(RHPaymentBase):
     def _get_transaction_parameters(self):
     #     """Get parameters for creating a transaction request."""
         settings = GovukpayPaymentPlugin.event_settings.get_all(self.event)
-        print(settings)
-        print("HELLOOO ADAM")
-    #     format_map = {
-    #         'user_id': self.registration.user_id,
-    #         'user_name': self.registration.full_name,
-    #         'user_firstname': self.registration.first_name,
-    #         'user_lastname': self.registration.last_name,
-    #         'event_id': self.registration.event_id,
-    #         'event_title': self.registration.event.title,
-    #         'registration_id': self.registration.id,
-    #         'regform_title': self.registration.registration_form.title
-    #     }
+        format_map = {
+            'user_id': self.registration.user_id,
+            'user_name': self.registration.full_name,
+            'user_firstname': self.registration.first_name,
+            'user_lastname': self.registration.last_name,
+            'event_id': self.registration.event_id,
+            'event_title': self.registration.event.title,
+            'registration_id': self.registration.id,
+            'regform_title': self.registration.registration_form.title
+        }
     #     order_description = settings['order_description'].format(**format_map)
     #     order_identifier = settings['order_identifier'].format(**format_map)
     #     # see the SIXPay Manual
     #     # https://saferpay.github.io/jsonapi/#Payment_v1_PaymentPage_Initialize
     #     # on what these things mean
-    #     transaction_parameters = {
+        transaction_parameters = {
+            'amount': to_small_currency(self.registration.price, self.registration.currency),
+            'reference': '1231231',
+            'language': 'en',
+            'delayed_capture': False,
+            'return_url': url_for_plugin('payment_govukpay.success', self.registration.locator.uuid, _external=True),
+        }
+
     #         'RequestHeader': get_request_header(SIXPAY_JSON_API_SPEC, settings['account_id']),
     #         'TerminalId': get_terminal_id(settings['account_id']),
     #         'Payment': {
@@ -110,7 +116,7 @@ class RHInitGovukpayPayment(RHPaymentBase):
     #             # where to asynchronously call back from SIXPay
     #             'NotifyUrl': url_for_plugin('payment_sixpay.notify', self.registration.locator.uuid, _external=True)
     #         }
-    #     }
+        # }
     #     if settings['notification_mail']:
     #         transaction_parameters['Notification']['MerchantEmails'] = [settings['notification_mail']]
     #     return transaction_parameters
@@ -134,8 +140,9 @@ class RHInitGovukpayPayment(RHPaymentBase):
     #     if not SixpayPaymentPlugin.instance.supports_currency(self.registration.currency):
     #         raise BadRequest
     #
-    # def _process(self):
-    #     transaction_params = self._get_transaction_parameters()
+    def _process(self):
+        transaction_params = self._get_transaction_parameters()
+        print(transaction_params)
     #     init_response = self._init_payment_page(transaction_params)
     #     payment_url = init_response['RedirectUrl']
     #

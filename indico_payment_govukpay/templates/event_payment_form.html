@@ -1,6 +1,6 @@
 {% trans %}
     Clicking on the <strong>Pay Now</strong> button will redirect you
-    to the SIXPay Saferpay site in order to complete your payment.
+    to the GOV.UK Pay site in order to complete your payment.
 {% endtrans %}
 
 <dl class="i-data-list">
@@ -12,7 +12,7 @@
     <dd>{{ format_currency(amount, currency, locale=session.lang) }}</dd>
     <dt></dt>
     <dd>
-        <a class="i-button" href="{{ url_for_plugin('payment_sixpay.init', registration.locator.registrant) }}">
+        <a class="i-button" href="{{ url_for_plugin('payment_govukpay.init', registration.locator.registrant) }}">
             {%- trans %}Pay Now{% endtrans -%}
         </a>
     </dd>
