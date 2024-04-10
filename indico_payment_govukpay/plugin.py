@@ -39,7 +39,7 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         from indico_payment_govukpay.blueprint import blueprint
         return blueprint
 
-    def is_pending_transaction_expired(self, transaction):
-        if not (expiration := transaction.data.get('Init_PP_response', {}).get('Expiration')):
-            return False
-        return dateutil.parser.parse(expiration) <= now_utc()
+    # def is_pending_transaction_expired(self, transaction):
+    #     if not (expiration := transaction.data.get('Init_PP_response', {}).get('Expiration')):
+    #         return False
+    #     return dateutil.parser.parse(expiration) <= now_utc()

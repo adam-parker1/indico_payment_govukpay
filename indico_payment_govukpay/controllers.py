@@ -151,25 +151,26 @@ class RHInitGovukpayPayment(RHPaymentBase):
             my_file.write(str(transaction_params))
             my_file.write(str(init_response))
 
-        return redirect(transaction_params['return_url'])
-    #     payment_url = init_response['RedirectUrl']
-    #
-    #     # create pending transaction and store Saferpay transaction token
-    #     new_indico_txn = register_transaction(
-    #         self.registration,
-    #         self.registration.price,
-    #         self.registration.currency,
-    #         TransactionAction.pending,
-    #         PROVIDER_SIXPAY,
-    #         {'Init_PP_response': init_response}
-    #     )
-    #     if not new_indico_txn:
-    #         # set it on the current transaction if we could not create a next one
-    #         # this happens if we already have a pending transaction and it's incredibly
-    #         # ugly...
-    #         self.registration.transaction.data = {'Init_PP_response': init_response}
-    #     return redirect(payment_url)
-    #
+        # return redirect(transaction_params['return_url'])
+        payment_url = init_response['_links']['next_url']['href']
+
+        with open('/opt/indico/adam.log', 'w') as my_file:
+            my_file.write(str(payment_url))
+        # create pending transaction
+        new_indico_txn = register_transaction(
+            self.registration,
+            self.registration.price,
+            self.registration.currency,
+            TransactionAction.pending,
+            PROVIDER_GOVUKPAY
+        )
+        # if not new_indico_txn:
+            # set it on the current transaction if we could not create a next one
+            # this happens if we already have a pending transaction and it's incredibly
+            # ugly...
+            # self.registration.transaction.data = {'Init_PP_response': init_response}
+        return redirect(payment_url)
+
 
 # class SixpayNotificationHandler(RHSixpayBase):
 #     """Handler for notification from SIXPay service."""
@@ -391,4 +392,35 @@ class RHInitGovukpayPayment(RHPaymentBase):
 class UserSuccessHandler(RHPaymentBase):
     def _process(self):
         flash(_('Your payment has been confirmed.'), 'success')
+        return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
+
+class UserCancelHandler(RHPaymentBase):
+    """User redirect target in case of cancelled payment."""
+
+    def _process(self):
+        register_transaction(
+            self.registration,
+            self.registration.transaction.amount,
+            self.registration.transaction.currency,
+            # XXX: this is indeed reject and not cancel (cancel is "mark as unpaid" and
+            # only used for manual transactions)
+            TransactionAction.reject,
+            provider=PROVIDER_GOVUKPAY,
+        )
+        flash(_('You cancelled the payment.'), 'info')
+        return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
+
+
+class UserFailureHandler(RHPaymentBase):
+    """User redirect target in case of failed payment."""
+
+    def _process(self):
+        register_transaction(
+            self.registration,
+            self.registration.transaction.amount,
+            self.registration.transaction.currency,
+            TransactionAction.reject,
+            provider=PROVIDER_GOVUKPAY,
+        )
+        flash(_('Your payment has failed.'), 'info')
         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
