@@ -11,7 +11,7 @@ from indico.core.plugins import IndicoPlugin
 from indico.modules.events.payment import PaymentPluginMixin
 from indico.util.date_time import now_utc
 
-from indico_payment_govukpay.forms import PluginSettingsForm
+from indico_payment_govukpay.forms import PluginSettingsForm, EventSettingsForm
 
 
 class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
@@ -24,6 +24,7 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
     #: form for default configuration across events
     settings_form = PluginSettingsForm
     #: global default settings - should be a reasonable default
+    event_settings_form = EventSettingsForm
     default_settings = {
         'method_name': 'GovUK Pay',
         'url': 'https://publicapi.payments.service.gov.uk/'
@@ -32,6 +33,8 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
     default_event_settings = {
         'enabled': False,
         'method_name': 'GovUK Pay',
+        'description': None,
+        'reference_prefix': None,
     }
 
     def get_blueprints(self):

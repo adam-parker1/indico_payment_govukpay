@@ -95,3 +95,36 @@ class PluginSettingsForm(PaymentPluginSettingsFormBase):
         validators=[DataRequired()],
         description=_('URL to contact the GOV.UK Pay JSON API'),
     )
+
+class EventSettingsForm(PaymentEventSettingsFormBase):
+    """Configuration form for the plugin for a specific event."""
+
+    description = StringField(
+        label=_('Payment Description'),
+        validators=[DataRequired(), FormatField(max_length=80)],
+        description=_(
+            'The description of each payment in a human readable way. '
+            'It is presented to the registrant during the transaction with Saferpay. '
+            'Supported placeholders: {}'
+        ).format(', '.join(f'{{{p}}}' for p in FormatField.default_field_map))
+    )
+    reference_prefix = StringField(
+        label=_('Reference Prefix'),
+        validators=[
+            DataRequired(),
+            IndicoRegexp(r'^[0-9-]{0,15}$')
+        ],
+        description=_(
+            'Prefix to add to each payment reference for identification by finance. '
+            'E.g. MyEvent_ prefix would create reference MyEvent_e435_r23'
+            )
+    )
+
+    notification_mail = StringField(
+        label=_('Notification Email'),
+        validators=[Optional(), Email(), Length(0, 50)],
+        description=_(
+            'Email address to receive notifications of transactions. '
+            'This is independent of Indico payment notifications.'
+        )
+    )
