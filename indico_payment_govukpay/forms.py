@@ -112,7 +112,7 @@ class EventSettingsForm(PaymentEventSettingsFormBase):
         label=_('Reference Prefix'),
         validators=[
             DataRequired(),
-            IndicoRegexp(r'^[0-9-]{0,15}$')
+            FormatField(max_length=80)
         ],
         description=_(
             'Prefix to add to each payment reference for identification by finance. '

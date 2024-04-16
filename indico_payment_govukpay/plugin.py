@@ -35,6 +35,7 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
         'method_name': 'GovUK Pay',
         'description': None,
         'reference_prefix': None,
+        'notification_mail': None,
     }
 
     def get_blueprints(self):

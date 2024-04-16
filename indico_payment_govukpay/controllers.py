@@ -65,10 +65,27 @@ from indico_payment_govukpay.util import to_small_currency, PROVIDER_GOVUKPAY, G
 #             # we no longer have a token in the local transaction
 #             self.token = None
 
-# class RHGovukPayBase(RHPaymentBase):
+class RHGovukPayBase(RHPaymentBase):
 
-class RHInitGovukpayPayment(RHPaymentBase):
-    payment_id = ""
+    def _process_confirmation(self):
+        endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
+        headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
+        resp_json = requests.get(f'{endpoint}/{self.registration.transaction.data["payment_id"]}', headers=headers).json()
+
+        if resp_json['state']['status'] == 'success' and resp_json['state']['finished'] :
+            self._register_payment()
+
+    def _register_payment(self):
+        """Register the transaction as paid."""
+        register_transaction(
+            self.registration,
+            self.registration.transaction.amount,
+            self.registration.transaction.currency,
+            TransactionAction.complete,
+            PROVIDER_GOVUKPAY,
+        )
+
+class RHInitGovukpayPayment(RHGovukPayBase):
     def _get_transaction_parameters(self):
     #     """Get parameters for creating a transaction request."""
         settings = GovukpayPaymentPlugin.event_settings.get_all(self.event)
@@ -90,7 +107,7 @@ class RHInitGovukpayPayment(RHPaymentBase):
     #     # on what these things mean
         transaction_parameters = {
             'amount': to_small_currency(self.registration.price, self.registration.currency),
-            'reference': f'{reference_prefix}_E{self.registration.event_id}_R{self.registration_id}',
+            'reference': f'{reference_prefix}_E{self.registration.event_id}_R{self.registration.id}',
             'description': description,
             'language': 'en',
             'delayed_capture': False,
@@ -149,23 +166,18 @@ class RHInitGovukpayPayment(RHPaymentBase):
     def _process(self):
         transaction_params = self._get_transaction_parameters()
         init_response = self._init_payment_page(transaction_params)
-        with open('/opt/indico/adam.log', 'w') as my_file:
-            my_file.write(str(transaction_params))
-            my_file.write(str(init_response))
 
         payment_url = init_response['_links']['next_url']['href']
-        self.payment_id = init_response.payment_id
-
-        with open('/opt/indico/adam.log', 'w') as my_file:
-            my_file.write(str(payment_url))
+        payment_id = init_response['payment_id']
 
         # create pending transaction
-        new_indico_txn = register_transaction(
+        register_transaction(
             self.registration,
             self.registration.price,
             self.registration.currency,
             TransactionAction.pending,
-            PROVIDER_GOVUKPAY
+            PROVIDER_GOVUKPAY,
+            {'payment_id': payment_id}
         )
         # if not new_indico_txn:
             # set it on the current transaction if we could not create a next one
@@ -174,14 +186,6 @@ class RHInitGovukpayPayment(RHPaymentBase):
             # self.registration.transaction.data = {'Init_PP_response': init_response}
         return redirect(payment_url)
 
-    def _process_confirmation(self):
-
-        endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL, self.payment_id)
-        headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
-        resp = requests.post(endpoint, headers=headers)
-
-        with open('/opt/indico/adam.log', 'w') as my_file:
-            my_file.write(str(resp.dump(4)))
 
 # class SixpayNotificationHandler(RHSixpayBase):
 #     """Handler for notification from SIXPay service."""
@@ -400,20 +404,19 @@ class RHInitGovukpayPayment(RHPaymentBase):
 #         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
 
 
-class UserSuccessHandler(RHPaymentBase):
+class UserSuccessHandler(RHGovukPayBase):
     def _process(self):
         try:
-            # if self.token is not None:
             self._process_confirmation()
         except Exception as e:
             flash(_(f'Your payment could not be confirmed. Please contact the event organizers. {e}'), 'warning')
         else:
             if self.registration.transaction.status == TransactionStatus.successful:
                 flash(_('Your payment has been confirmed.'), 'success')
-        # flash(_('Your payment has been confirmed.'), 'success')
         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
 
-class UserCancelHandler(RHPaymentBase):
+
+class UserCancelHandler(RHGovukPayBase):
     """User redirect target in case of cancelled payment."""
 
     def _process(self):
@@ -430,7 +433,7 @@ class UserCancelHandler(RHPaymentBase):
         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
 
 
-class UserFailureHandler(RHPaymentBase):
+class UserFailureHandler(RHGovukPayBase):
     """User redirect target in case of failed payment."""
 
     def _process(self):
