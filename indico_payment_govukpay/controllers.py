@@ -26,64 +26,55 @@ from indico.web.rh import RH
 from indico_payment_govukpay import _
 from indico_payment_govukpay.plugin import GovukpayPaymentPlugin
 from indico_payment_govukpay.util import to_small_currency, PROVIDER_GOVUKPAY, GOVUKPAY_INIT_URL, GOVUKPAY_API_TOKEN
-# from indico_payment_sixpay.util import (PROVIDER_SIXPAY, SIXPAY_JSON_API_SPEC, SIXPAY_PP_ASSERT_URL,
-                                        # SIXPAY_PP_CANCEL_URL, SIXPAY_PP_CAPTURE_URL, SIXPAY_PP_INIT_URL,
-                                        # get_request_header, get_terminal_id, to_large_currency, to_small_currency)
 
-
-# class TransactionFailure(Exception):
-#     """A transaction with SIXPay failed.
-#
-#     :param step: name of the step at which the transaction failed
-#     :param details: verbose description of what went wrong
-#     """
-#
-#     def __init__(self, step, details=None):
-#         self.step = step
-#         self.details = details
-#
-#
-# class RHSixpayBase(RH):
-#     """Request Handler for asynchronous callbacks from SIXPay.
-#
-#     These handlers are used either by
-#
-#     - the user, when he is redirected from SIXPay back to Indico
-#     - SIXPay, when it sends back the result of a transaction
-#     """
-#
-#     CSRF_ENABLED = False
-#
-#     def _process_args(self):
-#         self.registration = Registration.query.filter_by(uuid=request.args['token']).first()
-#         if not self.registration:
-#             raise BadRequest
-#         try:
-#             self.token = self.registration.transaction.data['Init_PP_response']['Token']
-#         except KeyError:
-#             # if the transaction was already recorded as successful via background notification,
-#             # we no longer have a token in the local transaction
-#             self.token = None
 
 class RHGovukPayBase(RHPaymentBase):
 
-    def _process_confirmation(self):
+    def _process(self):
+        payment_id = self.registration.transaction.data["payment_id"]
+        return _process_payment_confirmation(self, payment_id)
+        
+    def _process_payment_confirmation(self, payment_id):
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
         headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
-        resp_json = requests.get(f'{endpoint}/{self.registration.transaction.data["payment_id"]}', headers=headers).json()
+        response_json = requests.get(f'{endpoint}/{payment_id}', headers=headers).json()
 
-        if resp_json['state']['status'] == 'success' and resp_json['state']['finished'] :
-            self._register_payment()
+        payment_finished = response_json['state']['finished']
+        payment_status = response_json['state']['status']
 
-    def _register_payment(self):
-        """Register the transaction as paid."""
-        register_transaction(
-            self.registration,
-            self.registration.transaction.amount,
-            self.registration.transaction.currency,
-            TransactionAction.complete,
-            PROVIDER_GOVUKPAY,
-        )
+        if not payment_finished:
+            flash(_(f'Your payment is still processing. If the "Pending" payment status does not update, please contact the event organisers.'), 'warning')
+            return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
+
+        if payment_status == 'success':
+            return redirect(url_for_plugin('payment_govukpay.success', self.registration.locator.uuid, _external=True))
+        elif payment_status == 'failed':
+            return redirect(url_for_plugin('payment_govukpay.failure', self.registration.locator.uuid, _external=True))
+        elif payment_status == 'cancelled':
+            return redirect(url_for_plugin('payment_govukpay.cancel', self.registration.locator.uuid, _external=True))
+        else:
+            flash(_(f'Your payment could not be confirmed. Please contact the event organisers.'), 'warning')
+            return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
+
+    # def _register_payment_successful(self):
+    #     """Register the transaction as paid."""
+    #     register_transaction(
+    #         self.registration,
+    #         self.registration.transaction.amount,
+    #         self.registration.transaction.currency,
+    #         TransactionAction.complete,
+    #         PROVIDER_GOVUKPAY,
+    #     )
+    #
+    # def _register_payment_successful(self):
+    #     """Register the transaction as paid."""
+    #     register_transaction(
+    #         self.registration,
+    #         self.registration.transaction.amount,
+    #         self.registration.transaction.currency,
+    #         TransactionAction.complete,
+    #         PROVIDER_GOVUKPAY,
+    #     )
 
 class RHInitGovukpayPayment(RHGovukPayBase):
     def _get_transaction_parameters(self):
@@ -111,38 +102,11 @@ class RHInitGovukpayPayment(RHGovukPayBase):
             'description': description,
             'language': 'en',
             'delayed_capture': False,
-            'return_url': url_for_plugin('payment_govukpay.success', self.registration.locator.uuid, _external=True),
+            'return_url': url_for_plugin('payment_govukpay.query', self.registration.locator.uuid, _external=True),
         }
         return transaction_parameters
 
-    #         'RequestHeader': get_request_header(SIXPAY_JSON_API_SPEC, settings['account_id']),
-    #         'TerminalId': get_terminal_id(settings['account_id']),
-    #         'Payment': {
-    #             'Amount': {
-    #                 # indico handles price as largest currency, but six expects
-    #                 # smallest. E.g. EUR: indico uses 100.2 Euro, but six
-    #                 # expects 10020 Cent
-    #                 'Value': str(to_small_currency(self.registration.price, self.registration.currency)),
-    #                 'CurrencyCode': self.registration.currency,
-    #             },
-    #             'OrderId': order_identifier[:80],
-    #             'DESCRIPTION': order_description[:1000],
-    #         },
-    #         # callbacks of the transaction - where to announce success etc., when redircting the user
-    #         'ReturnUrls': {
-    #             'Success': url_for_plugin('payment_sixpay.success', self.registration.locator.uuid, _external=True),
-    #             'Fail': url_for_plugin('payment_sixpay.failure', self.registration.locator.uuid, _external=True),
-    #             'Abort': url_for_plugin('payment_sixpay.cancel', self.registration.locator.uuid, _external=True)
-    #         },
-    #         'Notification': {
-    #             # where to asynchronously call back from SIXPay
-    #             'NotifyUrl': url_for_plugin('payment_sixpay.notify', self.registration.locator.uuid, _external=True)
-    #         }
-        # }
-    #     if settings['notification_mail']:
-    #         transaction_parameters['Notification']['MerchantEmails'] = [settings['notification_mail']]
-    #     return transaction_parameters
-    #
+
     def _init_payment_page(self, transaction_data):
         """Initialize payment page."""
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
@@ -154,14 +118,7 @@ class RHInitGovukpayPayment(RHGovukPayBase):
             GovukpayPaymentPlugin.logger.error('Could not initialize payment: %s', exc.response.text)
             raise Exception('Could not initialize payment')
         return resp.json()
-    #
-    # def _process_args(self):
-    #     RHPaymentBase._process_args(self)
-    #     if 'sixpay' not in get_active_payment_plugins(self.event):
-    #         raise NotFound
-    #     if not SixpayPaymentPlugin.instance.supports_currency(self.registration.currency):
-    #         raise BadRequest
-    #
+
 
     def _process(self):
         transaction_params = self._get_transaction_parameters()
@@ -179,240 +136,21 @@ class RHInitGovukpayPayment(RHGovukPayBase):
             PROVIDER_GOVUKPAY,
             {'payment_id': payment_id}
         )
-        # if not new_indico_txn:
-            # set it on the current transaction if we could not create a next one
-            # this happens if we already have a pending transaction and it's incredibly
-            # ugly...
-            # self.registration.transaction.data = {'Init_PP_response': init_response}
         return redirect(payment_url)
-
-
-# class SixpayNotificationHandler(RHSixpayBase):
-#     """Handler for notification from SIXPay service."""
-#
-#     def _process(self):
-#         """Process the reply from SIXPay about the transaction."""
-#         if self.token is not None:
-#             self._process_confirmation()
-#
-#     def _process_confirmation(self):
-#         """Process the confirmation response inside indico."""
-#         # assert transaction status from SIXPay
-#         try:
-#             assert_response = self._assert_payment()
-#             if self._is_duplicate_transaction(assert_response):
-#                 # we have already handled the transaction
-#                 return
-#             elif self._is_captured(assert_response):
-#                 # We already captured the payment. This usually happens because sixpay
-#                 # calls a background notification endpoint but we also try to capture
-#                 # it after being redirected to the user-facing success endpoint
-#                 SixpayPaymentPlugin.logger.info('Not processing already-captured transaction')
-#                 time.sleep(1)  # wait a bit to make sure the other request finished!
-#                 return
-#             elif self._is_authorized(assert_response):
-#                 self._capture_transaction(assert_response)
-#                 self._verify_amount(assert_response)
-#                 self._register_payment(assert_response)
-#         except TransactionFailure as exc:
-#             if exc.step == 'capture':
-#                 try:
-#                     payload = json.loads(exc.details)
-#                 except (json.JSONDecodeError, TypeError):
-#                     payload = {}
-#                 if payload.get('ErrorName') == 'TRANSACTION_ALREADY_CAPTURED':
-#                     # Same as the self._is_captured(assert_response) case above, but a race
-#                     # between the two requests (user-facing and background) resulted in both
-#                     # asserts returning an 'authorized' state
-#                     SixpayPaymentPlugin.logger.info('Not processing already-captured transaction (parallel request)')
-#                     time.sleep(1)  # wait a bit to make sure the other request finished
-#                     return
-#             SixpayPaymentPlugin.logger.warning('SIXPay transaction failed during %s: %s', exc.step, exc.details)
-#             raise
-#
-#     def _perform_request(self, task, endpoint, data):
-#         """Perform a request against SIXPay.
-#
-#         :param task: description of the request, used for error handling
-#         :param endpoint: the URL endpoint *relative* to the SIXPay base URL
-#         :param **data: data passed during the request
-#
-#         This will automatically raise any HTTP errors encountered during the
-#         request. If the request itself fails, a :py:exc:`~.TransactionFailure`
-#         is raised for ``task``.
-#         """
-#         request_url = urljoin(SixpayPaymentPlugin.settings.get('url'), endpoint)
-#         credentials = (SixpayPaymentPlugin.settings.get('username'), SixpayPaymentPlugin.settings.get('password'))
-#         response = requests.post(request_url, json=data, auth=credentials)
-#         try:
-#             response.raise_for_status()
-#         except requests.HTTPError:
-#             raise TransactionFailure(step=task, details=response.text)
-#         return response
-#
-#     def _assert_payment(self):
-#         """Check the status of the transaction with SIXPay.
-#
-#         Returns transaction assert data.
-#         """
-#         account_id = SixpayPaymentPlugin.event_settings.get(self.registration.event, 'account_id')
-#         assert_response = self._perform_request(
-#             'assert',
-#             SIXPAY_PP_ASSERT_URL,
-#             {
-#                 'RequestHeader': get_request_header(SIXPAY_JSON_API_SPEC, account_id),
-#                 'Token': self.token,
-#             }
-#         )
-#         if assert_response.ok:
-#             return assert_response.json()
-#
-#     def _is_duplicate_transaction(self, transaction_data):
-#         """Check if this transaction has already been recorded."""
-#         prev_transaction = self.registration.transaction
-#         if (
-#             not prev_transaction or
-#             prev_transaction.provider != PROVIDER_SIXPAY or
-#             'Transaction' not in prev_transaction.data
-#         ):
-#             return False
-#         old = prev_transaction.data['Transaction']
-#         new = transaction_data['Transaction']
-#         return (
-#             old['OrderId'] == new['OrderId'] and
-#             old['Type'] == new['Type'] and
-#             old['Id'] == new['Id'] and
-#             old['SixTransactionReference'] == new['SixTransactionReference'] and
-#             old['Amount']['Value'] == new['Amount']['Value'] and
-#             old['Amount']['CurrencyCode'] == new['Amount']['CurrencyCode']
-#         )
-#
-#     def _is_authorized(self, assert_data):
-#         """Check if payment is authorized."""
-#         return assert_data['Transaction']['Status'] == 'AUTHORIZED'
-#
-#     def _is_captured(self, assert_data):
-#         """Check if payment is captured, i.e. the cash flow is triggered."""
-#         return assert_data['Transaction']['Status'] == 'CAPTURED'
-#
-#     def _verify_amount(self, assert_data):
-#         """Verify the amount and currency of the payment.
-#
-#         Sends an email but still registers incorrect payments.
-#         """
-#         expected_amount = float(self.registration.price)
-#         expected_currency = self.registration.currency
-#         amount = float(assert_data['Transaction']['Amount']['Value'])
-#         currency = assert_data['Transaction']['Amount']['CurrencyCode']
-#         if to_small_currency(expected_amount, expected_currency) == amount and expected_currency == currency:
-#             return True
-#         SixpayPaymentPlugin.logger.warning("Payment doesn't match event's fee: %s %s != %s %s",
-#                                            amount, currency, to_small_currency(expected_amount, expected_currency),
-#                                            expected_currency)
-#         notify_amount_inconsistency(self.registration, to_large_currency(amount, currency), currency)
-#         return False
-#
-#     def _capture_transaction(self, assert_data):
-#         """Confirm to SIXPay that the transaction is accepted.
-#
-#         On success returns the response JSON data.
-#         """
-#         account_id = SixpayPaymentPlugin.event_settings.get(self.registration.event, 'account_id')
-#         capture_data = {
-#             'RequestHeader': get_request_header(SIXPAY_JSON_API_SPEC, account_id),
-#             'TransactionReference': {'TransactionId': assert_data['Transaction']['Id']}
-#         }
-#         capture_response = self._perform_request('capture', SIXPAY_PP_CAPTURE_URL, capture_data)
-#         return capture_response.json()
-#
-#     def _cancel_transaction(self, assert_data):
-#         """Inform Sixpay that the transaction is canceled.
-#
-#         Cancel the transaction at Sixpay. This method is implemented but
-#         not used and tested yet.
-#         """
-#         account_id = SixpayPaymentPlugin.event_settings.get(self.registration.event, 'account_id')
-#         cancel_data = {
-#             'RequestHeader': get_request_header(
-#                 SIXPAY_JSON_API_SPEC, account_id
-#             ),
-#             'TransactionReference': {
-#                 'TransactionId': assert_data['Transaction']['Id']
-#             }
-#         }
-#         cancel_response = self._perform_request(
-#             'cancel', SIXPAY_PP_CANCEL_URL, cancel_data
-#         )
-#         return cancel_response.json()
-#
-#     def _register_payment(self, assert_data):
-#         """Register the transaction as paid."""
-#         register_transaction(
-#             self.registration,
-#             self.registration.transaction.amount,
-#             self.registration.transaction.currency,
-#             TransactionAction.complete,
-#             PROVIDER_SIXPAY,
-#             data={'Transaction': assert_data['Transaction']}
-#         )
-#
-#
-# class UserCancelHandler(RHSixpayBase):
-#     """User redirect target in case of cancelled payment."""
-#
-#     def _process(self):
-#         register_transaction(
-#             self.registration,
-#             self.registration.transaction.amount,
-#             self.registration.transaction.currency,
-#             # XXX: this is indeed reject and not cancel (cancel is "mark as unpaid" and
-#             # only used for manual transactions)
-#             TransactionAction.reject,
-#             provider=PROVIDER_SIXPAY,
-#         )
-#         flash(_('You cancelled the payment.'), 'info')
-#         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
-#
-#
-# class UserFailureHandler(RHSixpayBase):
-#     """User redirect target in case of failed payment."""
-#
-#     def _process(self):
-#         register_transaction(
-#             self.registration,
-#             self.registration.transaction.amount,
-#             self.registration.transaction.currency,
-#             TransactionAction.reject,
-#             provider=PROVIDER_SIXPAY,
-#         )
-#         flash(_('Your payment has failed.'), 'info')
-#         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
-#
-#
-# class UserSuccessHandler(SixpayNotificationHandler):
-#     """User redirect target in case of successful payment."""
-#
-#     def _process(self):
-#         try:
-#             if self.token is not None:
-#                 self._process_confirmation()
-#         except TransactionFailure:
-#             flash(_('Your payment could not be confirmed. Please contact the event organizers.'), 'warning')
-#         else:
-#             if self.registration.transaction.status == TransactionStatus.successful:
-#                 flash(_('Your payment has been confirmed.'), 'success')
-#         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
-
 
 class UserSuccessHandler(RHGovukPayBase):
     def _process(self):
-        try:
-            self._process_confirmation()
-        except Exception as e:
-            flash(_(f'Your payment could not be confirmed. Please contact the event organizers. {e}'), 'warning')
-        else:
-            if self.registration.transaction.status == TransactionStatus.successful:
-                flash(_('Your payment has been confirmed.'), 'success')
+        payment_id = self.registration.transaction.data["payment_id"]
+        register_transaction(
+            self.registration,
+            self.registration.price,
+            self.registration.currency,
+            TransactionAction.complete,
+            PROVIDER_GOVUKPAY,
+            {'payment_id': payment_id}
+        )
+
+        flash(_('Your payment has been confirmed.'), 'success')
         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
 
 
@@ -420,14 +158,14 @@ class UserCancelHandler(RHGovukPayBase):
     """User redirect target in case of cancelled payment."""
 
     def _process(self):
+        payment_id = self.registration.transaction.data["payment_id"]
         register_transaction(
             self.registration,
             self.registration.transaction.amount,
             self.registration.transaction.currency,
-            # XXX: this is indeed reject and not cancel (cancel is "mark as unpaid" and
-            # only used for manual transactions)
-            TransactionAction.reject,
-            provider=PROVIDER_GOVUKPAY,
+            TransactionAction.cancel,
+            PROVIDER_GOVUKPAY,
+            {'payment_id': payment_id}
         )
         flash(_('You cancelled the payment.'), 'info')
         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
@@ -437,12 +175,14 @@ class UserFailureHandler(RHGovukPayBase):
     """User redirect target in case of failed payment."""
 
     def _process(self):
+        payment_id = self.registration.transaction.data["payment_id"]
         register_transaction(
             self.registration,
             self.registration.transaction.amount,
             self.registration.transaction.currency,
             TransactionAction.reject,
-            provider=PROVIDER_GOVUKPAY,
+            PROVIDER_GOVUKPAY,
+            {'payment_id': payment_id}
         )
         flash(_('Your payment has failed.'), 'info')
         return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
