@@ -43,8 +43,8 @@ class RHGovukPayBase(RHPaymentBase):
         payment_status = response_json['state']['status']
 
         if not payment_finished:
-            flash(_(f'Your payment could not be confirmed. Please contact the event organizers. {exc}'), 'warning')
-            return 'problem'
+            flash(_(f'Your payment is still processing. If the "Pending" payment status does not update, please contact the event organisers.'), 'warning')
+            return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
 
         if payment_status == 'success':
             return redirect(url_for_plugin('payment_govukpay.success', self.registration.locator.uuid, _external=True))
@@ -53,8 +53,8 @@ class RHGovukPayBase(RHPaymentBase):
         elif payment_status == 'cancelled':
             return redirect(url_for_plugin('payment_govukpay.cancel', self.registration.locator.uuid, _external=True))
         else:
-            flash(_(f'Your payment could not be confirmed. Please contact the event organizers. {exc}'), 'warning')
-            return 'problem'
+            flash(_(f'Your payment could not be confirmed. Please contact the event organisers.'), 'warning')
+            return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
 
     # def _register_payment_successful(self):
     #     """Register the transaction as paid."""
@@ -140,6 +140,7 @@ class RHInitGovukpayPayment(RHGovukPayBase):
 
 class UserSuccessHandler(RHGovukPayBase):
     def _process(self):
+        payment_id = self.registration.transaction.data["payment_id"]
         register_transaction(
             self.registration,
             self.registration.price,
@@ -157,6 +158,7 @@ class UserCancelHandler(RHGovukPayBase):
     """User redirect target in case of cancelled payment."""
 
     def _process(self):
+        payment_id = self.registration.transaction.data["payment_id"]
         register_transaction(
             self.registration,
             self.registration.transaction.amount,
@@ -173,6 +175,7 @@ class UserFailureHandler(RHGovukPayBase):
     """User redirect target in case of failed payment."""
 
     def _process(self):
+        payment_id = self.registration.transaction.data["payment_id"]
         register_transaction(
             self.registration,
             self.registration.transaction.amount,
