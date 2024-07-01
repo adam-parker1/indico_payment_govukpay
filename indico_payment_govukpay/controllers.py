@@ -102,7 +102,7 @@ class RHInitGovukpayPayment(RHGovukPayBase):
             'description': description,
             'language': 'en',
             'delayed_capture': False,
-            'return_url': url_for_plugin('payment_govukpay.success', self.registration.locator.uuid, _external=True),
+            'return_url': url_for_plugin('payment_govukpay.query', self.registration.locator.uuid, _external=True),
         }
         return transaction_parameters
 
@@ -133,7 +133,7 @@ class RHInitGovukpayPayment(RHGovukPayBase):
             self.registration.price,
             self.registration.currency,
             TransactionAction.pending,
-            provider=PROVIDER_GOVUKPAY,
+            PROVIDER_GOVUKPAY,
             {'payment_id': payment_id}
         )
         return redirect(payment_url)
@@ -145,7 +145,7 @@ class UserSuccessHandler(RHGovukPayBase):
             self.registration.price,
             self.registration.currency,
             TransactionAction.successful,
-            provider=PROVIDER_GOVUKPAY,
+            PROVIDER_GOVUKPAY,
             {'payment_id': payment_id}
         )
 
@@ -162,7 +162,7 @@ class UserCancelHandler(RHGovukPayBase):
             self.registration.transaction.amount,
             self.registration.transaction.currency,
             TransactionAction.cancel,
-            provider=PROVIDER_GOVUKPAY,
+            PROVIDER_GOVUKPAY,
             {'payment_id': payment_id}
         )
         flash(_('You cancelled the payment.'), 'info')
@@ -178,7 +178,7 @@ class UserFailureHandler(RHGovukPayBase):
             self.registration.transaction.amount,
             self.registration.transaction.currency,
             TransactionAction.reject,
-            provider=PROVIDER_GOVUKPAY,
+            PROVIDER_GOVUKPAY,
             {'payment_id': payment_id}
         )
         flash(_('Your payment has failed.'), 'info')

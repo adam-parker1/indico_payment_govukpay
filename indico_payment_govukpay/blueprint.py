@@ -7,8 +7,10 @@
 
 from indico.core.plugins import IndicoPluginBlueprint
 
-from indico_payment_govukpay.controllers import RHGovukPayBase, RHInitGovukpayPayment, UserSuccessHandler,
-                                                UserFailureHandler, UserCancelHandler, UserStatusHandler
+from indico_payment_govukpay.controllers import (
+    RHGovukPayBase, RHInitGovukpayPayment, UserSuccessHandler,
+    UserFailureHandler, UserCancelHandler
+)
 
 blueprint = IndicoPluginBlueprint(
     'payment_govukpay', __name__,
