@@ -145,7 +145,7 @@ class UserSuccessHandler(RHGovukPayBase):
             self.registration,
             self.registration.price,
             self.registration.currency,
-            TransactionAction.successful,
+            TransactionAction.complete,
             PROVIDER_GOVUKPAY,
             {'payment_id': payment_id}
         )
