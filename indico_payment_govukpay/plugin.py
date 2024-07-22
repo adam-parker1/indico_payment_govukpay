@@ -27,7 +27,8 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
     event_settings_form = EventSettingsForm
     default_settings = {
         'method_name': 'GovUK Pay',
-        'url': 'https://publicapi.payments.service.gov.uk/'
+        'url': 'https://publicapi.payments.service.gov.uk/',
+        'govuk_api_token': ''
     }
     #: per event default settings - use the global settings
     default_event_settings = {

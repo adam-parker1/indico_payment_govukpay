@@ -25,7 +25,7 @@ from indico.web.rh import RH
 
 from indico_payment_govukpay import _
 from indico_payment_govukpay.plugin import GovukpayPaymentPlugin
-from indico_payment_govukpay.util import to_small_currency, PROVIDER_GOVUKPAY, GOVUKPAY_INIT_URL, GOVUKPAY_API_TOKEN
+from indico_payment_govukpay.util import to_small_currency, PROVIDER_GOVUKPAY, GOVUKPAY_INIT_URL
 
 
 class RHGovukPayBase(RHPaymentBase):
@@ -36,6 +36,8 @@ class RHGovukPayBase(RHPaymentBase):
         
     def _process_payment_confirmation(self, payment_id):
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
+        GOVUKPAY_API_TOKEN = GovukpayPaymentPlugin.settings.get('govuk_api_token')
+
         headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
         response_json = requests.get(f'{endpoint}/{payment_id}', headers=headers).json()
 
@@ -55,26 +57,6 @@ class RHGovukPayBase(RHPaymentBase):
         else:
             flash(_(f'Your payment could not be confirmed. Please contact the event organisers.'), 'warning')
             return redirect(url_for('event_registration.display_regform', self.registration.locator.registrant))
-
-    # def _register_payment_successful(self):
-    #     """Register the transaction as paid."""
-    #     register_transaction(
-    #         self.registration,
-    #         self.registration.transaction.amount,
-    #         self.registration.transaction.currency,
-    #         TransactionAction.complete,
-    #         PROVIDER_GOVUKPAY,
-    #     )
-    #
-    # def _register_payment_successful(self):
-    #     """Register the transaction as paid."""
-    #     register_transaction(
-    #         self.registration,
-    #         self.registration.transaction.amount,
-    #         self.registration.transaction.currency,
-    #         TransactionAction.complete,
-    #         PROVIDER_GOVUKPAY,
-    #     )
 
 class RHInitGovukpayPayment(RHGovukPayBase):
     def _get_transaction_parameters(self):
@@ -110,6 +92,8 @@ class RHInitGovukpayPayment(RHGovukPayBase):
     def _init_payment_page(self, transaction_data):
         """Initialize payment page."""
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
+        GOVUKPAY_API_TOKEN = GovukpayPaymentPlugin.settings.get('govuk_api_token')
+
         headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
         resp = requests.post(endpoint, json=transaction_data, headers=headers)
         try:
