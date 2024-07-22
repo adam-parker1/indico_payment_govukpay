@@ -12,14 +12,7 @@ from indico_payment_govukpay import _
 
 
 # GOVUK Pay API details
-from indico_payment_govukpay.constants import GOVUK_TOKEN
 GOVUKPAY_INIT_URL = 'v1/payments'
-GOVUKPAY_API_TOKEN = GOVUK_TOKEN
-# set in /etc/profile.d/flaskapp_setup.sh
-# from flask import current_app, from_prefixed_env
-# current_app.config.from_prefixed_env()
-# GOVUKPAY_API_TOKEN = current_app.config['GOVUK_TOKEN']
-
 # payment provider identifier
 PROVIDER_GOVUKPAY = 'govukpay'
 

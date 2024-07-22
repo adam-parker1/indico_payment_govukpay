@@ -95,6 +95,11 @@ class PluginSettingsForm(PaymentPluginSettingsFormBase):
         validators=[DataRequired()],
         description=_('URL to contact the GOV.UK Pay JSON API'),
     )
+    govuk_api_token = IndicoPasswordField(
+        _('GOV.UK API Token'),
+        validators=[DataRequired()],
+        toggle=True
+    )
 
 class EventSettingsForm(PaymentEventSettingsFormBase):
     """Configuration form for the plugin for a specific event."""
