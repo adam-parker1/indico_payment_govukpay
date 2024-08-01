@@ -36,7 +36,7 @@ class RHGovukPayBase(RHPaymentBase):
         
     def _process_payment_confirmation(self, payment_id):
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
-        GOVUKPAY_API_TOKEN = GovukpayPaymentPlugin.settings.get('govuk_api_token')
+        GOVUKPAY_API_TOKEN = GovukpayPaymentPlugin.event_settings.get(self.registration.event, 'govuk_api_token')
 
         headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
         response_json = requests.get(f'{endpoint}/{payment_id}', headers=headers).json()
@@ -92,7 +92,7 @@ class RHInitGovukpayPayment(RHGovukPayBase):
     def _init_payment_page(self, transaction_data):
         """Initialize payment page."""
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
-        GOVUKPAY_API_TOKEN = GovukpayPaymentPlugin.settings.get('govuk_api_token')
+        GOVUKPAY_API_TOKEN = GovukpayPaymentPlugin.event_settings.get(self.registration.event, 'govuk_api_token')
 
         headers = {'Authorization': f'Bearer {GOVUKPAY_API_TOKEN}', 'Content-Type': 'application/json'}
         resp = requests.post(endpoint, json=transaction_data, headers=headers)

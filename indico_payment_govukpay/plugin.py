@@ -26,17 +26,17 @@ class GovukpayPaymentPlugin(PaymentPluginMixin, IndicoPlugin):
     #: global default settings - should be a reasonable default
     event_settings_form = EventSettingsForm
     default_settings = {
-        'method_name': 'GovUK Pay',
+        'method_name': 'GOV.UK Pay',
         'url': 'https://publicapi.payments.service.gov.uk/',
-        'govuk_api_token': ''
     }
     #: per event default settings - use the global settings
     default_event_settings = {
         'enabled': False,
-        'method_name': 'GovUK Pay',
+        'method_name': 'GOV.UK Pay',
         'description': None,
         'reference_prefix': None,
         'notification_mail': None,
+        'govuk_api_token': ''
     }
 
     def get_blueprints(self):

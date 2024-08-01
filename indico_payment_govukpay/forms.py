@@ -95,23 +95,17 @@ class PluginSettingsForm(PaymentPluginSettingsFormBase):
         validators=[DataRequired()],
         description=_('URL to contact the GOV.UK Pay JSON API'),
     )
-    govuk_api_token = IndicoPasswordField(
-        _('GOV.UK API Token'),
-        validators=[DataRequired()],
-        toggle=True
-    )
 
 class EventSettingsForm(PaymentEventSettingsFormBase):
     """Configuration form for the plugin for a specific event."""
 
-    description = StringField(
-        label=_('Payment Description'),
-        validators=[DataRequired(), FormatField(max_length=80)],
+    govuk_api_token = IndicoPasswordField(
+        _('GOV.UK API Token'),
+        validators=[DataRequired()],
         description=_(
-            'The description of each payment in a human readable way. '
-            'It is presented to the registrant during the transaction with Saferpay. '
-            'Supported placeholders: {}'
-        ).format(', '.join(f'{{{p}}}' for p in FormatField.default_field_map))
+            'GOV.UK Pay API key provided by UKAEA Finance for this event.'
+            ),
+        toggle=True
     )
     reference_prefix = StringField(
         label=_('Reference Prefix'),
@@ -124,7 +118,15 @@ class EventSettingsForm(PaymentEventSettingsFormBase):
             'E.g. MyEvent_ prefix would create reference MyEvent_e435_r23'
             )
     )
-
+    description = StringField(
+        label=_('Payment Description'),
+        validators=[FormatField(max_length=80)],
+        description=_(
+            'The description of each payment in a human readable way. '
+            'It is presented to the registrant during the transaction with Saferpay. '
+            'Supported placeholders: {}'
+        ).format(', '.join(f'{{{p}}}' for p in FormatField.default_field_map))
+    )
     notification_mail = StringField(
         label=_('Notification Email'),
         validators=[Optional(), Email(), Length(0, 50)],
