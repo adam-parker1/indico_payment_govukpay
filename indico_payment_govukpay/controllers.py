@@ -32,7 +32,7 @@ class RHGovukPayBase(RHPaymentBase):
 
     def _process(self):
         payment_id = self.registration.transaction.data["payment_id"]
-        return _process_payment_confirmation(self, payment_id)
+        return self._process_payment_confirmation(payment_id)
         
     def _process_payment_confirmation(self, payment_id):
         endpoint = urljoin(GovukpayPaymentPlugin.settings.get('url'), GOVUKPAY_INIT_URL)
